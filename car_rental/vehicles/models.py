@@ -9,7 +9,7 @@ class Category(models.Model):
         return self.name
 
 class Vehicle(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='vehicles')
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='vehicles')
     make = models.CharField(max_length=50)
     model = models.CharField(max_length=50)
     year = models.PositiveIntegerField()

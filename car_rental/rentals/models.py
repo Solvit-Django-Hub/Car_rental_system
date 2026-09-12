@@ -11,7 +11,7 @@ class Rental(models.Model):
         ('cancelled', 'Cancelled'),
     )
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rentals')
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='rentals')
+vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='rentals')
     start_date = models.DateField()
     end_date = models.DateField()
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

@@ -1,5 +1,7 @@
 # rentals/models.py
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.conf import settings
 from vehicles.models import Vehicle
 
@@ -11,11 +13,28 @@ class Rental(models.Model):
         ('cancelled', 'Cancelled'),
     )
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='rentals')
-vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='rentals')
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='rentals')
     start_date = models.DateField()
     end_date = models.DateField()
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(end_date__gte=models.F('start_date')),
+                name='rental_end_date_gte_start_date',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({'end_date': 'End date must be on or after start date.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Rental #{self.id} - {self.customer.username}"

@@ -25,7 +25,7 @@ The system is designed to manage:
 
 ## 📂 Project Structure
 
-
+```text
 car_rental_system/
 │
 ├── accounts/

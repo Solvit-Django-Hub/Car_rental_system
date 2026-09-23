@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-from .models import Profile
+
 
 
 User = get_user_model()
@@ -111,3 +111,130 @@ class LogoutSerializer(serializers.Serializer):
 
     def save(self, **kwargs):
         self.token.blacklist()
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+
+    old_password = serializers.CharField(
+        write_only=True,
+        required=False
+    )
+
+    new_password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        required=False,
+        validators=[validate_password]
+    )
+
+    new_password2 = serializers.CharField(
+        write_only=True,
+        required=False
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "name",
+            "email",
+            "old_password",
+            "new_password",
+            "new_password2",
+        ]
+
+    def validate_email(self, value):
+        user = self.instance
+
+        if User.objects.exclude(
+            user_id=user.user_id
+        ).filter(
+            email=value
+        ).exists():
+
+            raise serializers.ValidationError(
+                "This email is already in use."
+            )
+
+        return value
+
+    def validate(self, data):
+
+        old_password = data.get("old_password")
+        new_password = data.get("new_password")
+        new_password2 = data.get("new_password2")
+
+        # Password change validation
+        if new_password and not old_password:
+            raise serializers.ValidationError({
+                "old_password": "Old password is required."
+            })
+
+        if old_password and not new_password:
+            raise serializers.ValidationError({
+                "new_password": "New password is required."
+            })
+
+        if new_password and new_password != new_password2:
+            raise serializers.ValidationError({
+                "new_password2": "New passwords do not match."
+            })
+
+        if old_password and not self.instance.check_password(
+            old_password
+        ):
+            raise serializers.ValidationError({
+                "old_password": "Old password is incorrect."
+            })
+
+        if old_password and new_password:
+            if old_password == new_password:
+                raise serializers.ValidationError({
+                    "new_password": "New password must be different from the old password."
+                })
+
+        return data
+
+    def update(self, instance, validated_data):
+
+        old_password = validated_data.pop(
+            "old_password",
+            None
+        )
+
+        new_password = validated_data.pop(
+            "new_password",
+            None
+        )
+
+        validated_data.pop(
+            "new_password2",
+            None
+        )
+
+        instance.name = validated_data.get(
+            "name",
+            instance.name
+        )
+
+        instance.email = validated_data.get(
+            "email",
+            instance.email
+        )
+
+        if new_password:
+            instance.set_password(new_password)
+
+        instance.save()
+
+        return instance
+
+class UserListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = [
+            "user_id",
+            "name",
+            "email",
+            "role",
+            "is_active",
+        ]

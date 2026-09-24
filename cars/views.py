@@ -1,6 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Category, Car
 from .serializers import CategorySerializer, CarSerializer
 from accounts.views import IsAdminOrManager
@@ -28,6 +29,34 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 class CarListCreateView(generics.ListCreateAPIView):
     queryset = Car.objects.all()
     serializer_class = CarSerializer
+
+    filter_backends = [
+        DjangoFilterBackend,
+        SearchFilter,
+        OrderingFilter,
+    ]
+
+    filterset_fields = [
+        "category",
+        "available",
+        "brand",
+        "model",
+    ]
+
+    search_fields = [
+        "brand",
+        "model",
+        "registration_number",
+    ]
+
+    ordering_fields = [
+        "price_per_day",
+        "year",
+        "brand",
+        "model",
+    ]
+
+    ordering = ["id"]
 
     def get_permissions(self):
         if self.request.method == "POST":

@@ -1,6 +1,8 @@
 from rest_framework import generics, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Rental, Payment, Review
 from .serializers import RentalSerializer, PaymentSerializer,ReviewSerializer
 from accounts.views import IsAdminOrManager
@@ -8,6 +10,35 @@ from accounts.views import IsAdminOrManager
 
 class RentalListCreateView(generics.ListCreateAPIView):
     serializer_class = RentalSerializer
+
+    filter_backends = [
+        DjangoFilterBackend,
+        SearchFilter,
+        OrderingFilter,
+    ]
+
+    filterset_fields = [
+        "car",
+        "status",
+        "start_date",
+        "end_date",
+    ]
+
+    search_fields = [
+        "car__brand",
+        "car__model",
+        "user__name",
+        "user__email",
+    ]
+
+    ordering_fields = [
+        "start_date",
+        "end_date",
+        "total_price",
+        "created_at",
+    ]
+
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user

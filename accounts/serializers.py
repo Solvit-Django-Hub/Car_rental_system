@@ -1,15 +1,17 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from .models import Profile
+from .utils import generate_otp
 
 
 User = get_user_model()
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-
     password = serializers.CharField(
         write_only=True,
         required=True,
@@ -29,7 +31,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "email",
             "password",
             "password2",
-            "role",
         ]
         read_only_fields = ["user_id"]
 
@@ -38,14 +39,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "A user with this email already exists."
             )
-
         return value
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:
-            raise serializers.ValidationError(
-                {"password2": "Passwords do not match."}
-            )
+            raise serializers.ValidationError({
+                "password2": "Passwords do not match."
+            })
 
         return attrs
 
@@ -56,10 +56,49 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             password=password,
+            role="customer",
             **validated_data
         )
 
+        user.is_active = False
+        user.otp = generate_otp()
+        user.otp_created_at = timezone.now()
+        user.otp_purpose = "activation"
+
+        user.save()
+
         return user
+
+class ActivateAccountSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(
+        min_length=6,
+        max_length=6
+ 
+    )
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(
+        min_length=6,
+        max_length=6
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[validate_password]
+    )
+    new_password2 = serializers.CharField(
+        write_only=True,
+        required=True
+    )
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password2"]:
+            raise serializers.ValidationError({
+                "new_password2": "Passwords do not match."
+            })
+
+        return attrs
 
 class LoginSerializer(serializers.Serializer):
 
